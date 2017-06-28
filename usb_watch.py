@@ -12,16 +12,16 @@ Requires:
 TODO:
  - Meaningful docstrings
  - General cleanup
- - Popuate list of current USB devices at startup
  - Twilio API to SMS on events.
- - Vendor and product lookups 
+ - Vendor and product lookups
 """
 
 import os
-#import sys
 import glib
-import usb.core
 from pyudev import Context, Monitor
+
+
+USB_DEVICES = []
 
 
 try:
@@ -43,15 +43,18 @@ except:
         getsome(device, action)
 
 
+
 def get_device_info(device, item):
     """
     docstring
     """
-    device_info = "/sys" + device.device_path + "/" + item
+    device_info = device.sys_path + "/" + item
+
     if os.path.isfile(device_info) is True:
         with open(device_info) as f:
             for line in f:
                 return line.rstrip(os.linesep)
+
     return None
 
 
@@ -59,45 +62,68 @@ def getsome(device, action):
     """
     docstring
     """
-    busnum = None
-    devnum = None
-    idProduct = None
-    idVendor = None
-
     if action == "add":
         busnum = get_device_info(device, "busnum")
         devnum = get_device_info(device, "devnum")
-        idProduct = get_device_info(device, "idProduct")
-        idVendor = get_device_info(device, "idVendor")
+        id_product = get_device_info(device, "idProduct")
+        id_vendor = get_device_info(device, "idVendor")
+        manufacturer = get_device_info(device, "manufacturer")
+        product = get_device_info(device, "product")
 
         if busnum:
-            print "Add -- %s Bus: %s Device: %s %s:%s" % \
-                (device.device_path, busnum, devnum, idVendor, idProduct)
+            USB_DEVICES.append((device.device_path,
+                                busnum,
+                                devnum,
+                                id_vendor,
+                                id_product,
+                                manufacturer,
+                                product))
+            print "Add -- %s Bus: %s Device: %s %s:%s %s %s" % \
+                (device.device_path, busnum, devnum, id_vendor, id_product,
+                 manufacturer, product)
 
     if action == "remove":
-        # TODO: this doesn't work. lookup device from pre-populated table
-        busnum = get_device_info(device, "busnum")
-        devnum = get_device_info(device, "devnum")
-        idProduct = get_device_info(device, "idProduct")
-        idVendor = get_device_info(device, "idVendor")
+        result = next((i for i, v in enumerate(USB_DEVICES) \
+                       if v[0] == device.device_path), None)
+        if result:
+            busnum = USB_DEVICES[result][1]
+            devnum = USB_DEVICES[result][2]
+            id_vendor = USB_DEVICES[result][3]
+            id_product = USB_DEVICES[result][4]
+            manufacturer = USB_DEVICES[result][5]
+            product = USB_DEVICES[result][6]
 
-        print "Remove -- %s Bus: %s Device: %s %s:%s" % \
-            (device.device_path, busnum, devnum, idVendor, idProduct)
+            print "Remove -- %s Bus: %s Device: %s %s:%s %s %s" % \
+                (device.device_path, busnum, devnum, id_vendor, id_product,
+                 manufacturer, product)
+
+            USB_DEVICES.pop(result)
 
 
 def main():
     """
     docstring
     """
-
-    # TODO: save this information for use with "remove" action.
-    dev = usb.core.find(find_all=True)
-    for cfg in dev:
-        print "Bus: %s Device: %s" % (cfg.bus, cfg.address)
-        print "VendorID: %s ProductID: %s" % \
-            (hex(cfg.idVendor), hex(cfg.idProduct))
-
     context = Context()
+
+    # Populate list of current USB devices
+    for device in context.list_devices(subsystem="usb"):
+        busnum = get_device_info(device, "busnum")
+        devnum = get_device_info(device, "devnum")
+        id_product = get_device_info(device, "idProduct")
+        id_vendor = get_device_info(device, "idVendor")
+        manufacturer = get_device_info(device, "manufacturer")
+        product = get_device_info(device, "product")
+
+        if busnum:
+            USB_DEVICES.append((device.device_path,
+                                busnum,
+                                devnum,
+                                id_vendor,
+                                id_product,
+                                manufacturer,
+                                product))
+
     monitor = Monitor.from_netlink(context)
 
     monitor.filter_by(subsystem='usb')
