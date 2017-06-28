@@ -12,13 +12,16 @@ Requires:
 TODO:
  - Meaningful docstrings
  - General cleanup
- - Twilio API to SMS on events.
  - Vendor and product lookups
+ - syslog?
 """
 
 import os
 import glib
+import socket
+import settings as twilio_settings
 from pyudev import Context, Monitor
+from twilio.rest import Client
 
 
 USB_DEVICES = []
@@ -42,6 +45,19 @@ except:
         """
         getsome(device, action)
 
+
+def send_sms(message):
+    """
+    docstring
+    TODO: add error checking, perhaps move client to global so it doesn't
+          have to be created every time (or destroy it). RTFM.
+    """
+    client = Client(twilio_settings.account_sid, twilio_settings.auth_token)
+
+    message = client.api.account.messages.create(to=twilio_settings.phone_to,
+                                                 from_=twilio_settings.phone_from,
+                                                 body=message)
+    return True
 
 
 def get_device_info(device, item):
@@ -81,6 +97,9 @@ def getsome(device, action):
             print "Add -- %s Bus: %s Device: %s %s:%s %s %s" % \
                 (device.device_path, busnum, devnum, id_vendor, id_product,
                  manufacturer, product)
+            send_sms("%s USB add: %s:%s, %s:%s %s %s" % \
+                     (socket.gethostname(), busnum, devnum, id_vendor,
+                      id_product, manufacturer, product))
 
     if action == "remove":
         result = next((i for i, v in enumerate(USB_DEVICES) \
@@ -96,6 +115,9 @@ def getsome(device, action):
             print "Remove -- %s Bus: %s Device: %s %s:%s %s %s" % \
                 (device.device_path, busnum, devnum, id_vendor, id_product,
                  manufacturer, product)
+            send_sms("%s USB remove: %s:%s, %s:%s %s %s" % \
+                     (socket.gethostname(), busnum, devnum, id_vendor,
+                      id_product, manufacturer, product))
 
             USB_DEVICES.pop(result)
 
@@ -131,6 +153,8 @@ def main():
 
     observer.connect('device-event', device_event)
     monitor.start()
+
+    print "[+] usb-watch by Daniel Roberson @dmfroberson Started."
 
     glib.MainLoop().run()
 
