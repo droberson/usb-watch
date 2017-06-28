@@ -13,6 +13,7 @@ TODO:
  - Meaningful docstrings
  - General cleanup
  - Vendor and product lookups
+ - argparse: toggle SMS
  - syslog?
 """
 
