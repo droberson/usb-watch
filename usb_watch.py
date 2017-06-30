@@ -15,6 +15,7 @@ TODO:
  - syslog?
 """
 
+import argparse
 import os
 import socket
 import glib
@@ -42,6 +43,27 @@ except ImportError:
 
 # Globals
 USB_DEVICES = []
+SEND_SMS = True
+DAEMONIZE = False
+PID_FILE = "usb-watch.pid"
+
+
+def xprint(buf):
+    """ xprint() -- wrapper for print. Quiet if daemonized. Logs if enabled.
+
+    Args:
+        buf (str) - String to output
+
+    Returns:
+        Nothing.
+
+    TODO:
+     - add logging
+    """
+    if DAEMONIZE:
+        return
+
+    print buf
 
 
 def send_sms(message):
@@ -51,11 +73,15 @@ def send_sms(message):
         message (str) - The message to send
 
     Returns:
-        True.
+        True if message is sent
+        False if message is not sent
 
     TODO: add error checking, perhaps move client to global so it doesn't
           have to be created every time (or destroy it). RTFM.
     """
+    if SEND_SMS == False:
+        return False
+
     client = Client(twilio_settings.account_sid, twilio_settings.auth_token)
 
     message = client.api.account.messages.create(to=twilio_settings.phone_to,
@@ -110,9 +136,9 @@ def event_handler(device, action):
                                 id_product,
                                 manufacturer,
                                 product))
-            print "[+] Add -- %s Bus: %s Device: %s %s:%s %s %s" % \
+            xprint("[+] Add -- %s Bus: %s Device: %s %s:%s %s %s" % \
                 (device.device_path, busnum, devnum, id_vendor, id_product,
-                 manufacturer, product)
+                 manufacturer, product))
             send_sms("%s USB add: %s:%s, %s:%s %s %s" % \
                      (socket.gethostname(), busnum, devnum, id_vendor,
                       id_product, manufacturer, product))
@@ -128,9 +154,9 @@ def event_handler(device, action):
             manufacturer = USB_DEVICES[result][5]
             product = USB_DEVICES[result][6]
 
-            print "[+] Remove -- %s Bus: %s Device: %s %s:%s %s %s" % \
+            xprint("[+] Remove -- %s Bus: %s Device: %s %s:%s %s %s" % \
                 (device.device_path, busnum, devnum, id_vendor, id_product,
-                 manufacturer, product)
+                 manufacturer, product))
             send_sms("%s USB remove: %s:%s, %s:%s %s %s" % \
                      (socket.gethostname(), busnum, devnum, id_vendor,
                       id_product, manufacturer, product))
@@ -138,12 +164,75 @@ def event_handler(device, action):
             USB_DEVICES.pop(result)
 
     else:
-        print "[-] Unknown event: %s" % action
+        xprint("[-] Unknown event: %s" % action)
+
+
+def write_pid_file(pid_file, pid):
+    """ write_pid_file() -- writes a PID file
+
+    Args:
+        pid_file (str) - PID file to write to
+        pid (int)      - PID
+
+    Returns:
+        Nothing. Exits on failure.
+    """
+    try:
+        with open(pid_file, "w") as f:
+            f.write(str(pid))
+
+    except IOError as err:
+        xprint("[-] Unable to open PID file %s for writing: %s" % \
+            (pid_file, err))
+        xprint("[-] Exiting.")
+        exit(os.EX_USAGE)
+
+
+def parse_cli():
+    """ parse_cli() -- parses CLI input
+
+    Args:
+        None
+
+    Returns:
+        ArgumentParser namespace relevant to supplied CLI options
+    """
+    description = "example: ./usb-watch.py [-d] [-p <pid file>] [-s]"
+    parser = argparse.ArgumentParser(description=description)
+
+    parser.add_argument("-p",
+                        "--pid_file",
+                        help="Location of PID file",
+                        default=PID_FILE,
+                        required=False)
+    parser.add_argument("-d",
+                        "--daemonize",
+                        help="Daemonize/fork to background",
+                        action="store_true")
+    parser.add_argument("-s",
+                        "--sms",
+                        help="Disable SMS messaging",
+                        action="store_false")
+
+    args = parser.parse_args()
+    return args
 
 
 def main():
     """ main() -- entry point for this program
     """
+    global USB_DEVICES
+    global SEND_SMS
+    global DAEMONIZE
+    global PID_FILE
+
+    # Parse CLI options
+    args = parse_cli()
+
+    DAEMONIZE = args.daemonize
+    PID_FILE = args.pid_file
+    SEND_MS = args.sms
+
     context = Context()
 
     # Populate list of current USB devices
@@ -172,10 +261,21 @@ def main():
     observer.connect('device-event', device_event)
     monitor.start()
 
-    print "[+] usb-watch by Daniel Roberson @dmfroberson Started."
+    if DAEMONIZE:
+        usbwatch_pid = os.fork()
+
+        if usbwatch_pid != 0:
+            return os.EX_OK
+
+    write_pid_file(PID_FILE, os.getpid())
+
+    xprint("[+] usb-watch by Daniel Roberson @dmfroberson Started. PID %s" % \
+        os.getpid())
 
     glib.MainLoop().run()
 
+    return os.EX_OK
+
 
 if __name__ == "__main__":
-    main()
+    exit(main())
