@@ -137,8 +137,8 @@ def event_handler(device, action):
 
             USB_DEVICES.pop(result)
 
-        else:
-            print "[-] Unknown event: %s" % action
+    else:
+        print "[-] Unknown event: %s" % action
 
 
 def main():
