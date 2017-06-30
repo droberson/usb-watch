@@ -10,8 +10,6 @@ Requires:
 
 
 TODO:
- - Meaningful docstrings
- - General cleanup
  - Vendor and product lookups
  - argparse: toggle SMS
  - syslog?
@@ -29,19 +27,17 @@ try:
     from pyudev.glib import MonitorObserver
 
     def device_event(observer, device):
+        """ device_event() -- glue function for udev device handler
         """
-        docstring
-        """
-        getsome(device, device.action)
+        event_handler(device, device.action)
 
 except ImportError:
     from pyudev.glib import GUDevMonitorObserver as MonitorObserver
 
     def device_event(observer, action, device):
+        """ device_event() -- glue function for udev device handler
         """
-        docstring
-        """
-        getsome(device, action)
+        event_handler(device, action)
 
 
 # Globals
@@ -49,8 +45,14 @@ USB_DEVICES = []
 
 
 def send_sms(message):
-    """
-    docstring
+    """ send_sms() -- Sends an SMS message using Twilio
+
+    Args:
+        message (str) - The message to send
+
+    Returns:
+        True.
+
     TODO: add error checking, perhaps move client to global so it doesn't
           have to be created every time (or destroy it). RTFM.
     """
@@ -63,8 +65,14 @@ def send_sms(message):
 
 
 def get_device_info(device, item):
-    """
-    docstring
+    """ get_device_info() -- retrieve information about a USB device
+
+    Args:
+        device (pyudev device object) - Udev device to retrieve information from
+        item (str)                    - Which item to retrieve
+
+    Returns:
+        str: The contents of "item". Otherwise, None.
     """
     device_info = device.sys_path + "/" + item
 
@@ -76,9 +84,15 @@ def get_device_info(device, item):
     return None
 
 
-def getsome(device, action):
-    """
-    docstring
+def event_handler(device, action):
+    """ event_handler() -- Handles udev events
+
+    Args:
+        device (pyudev device object) - Device on which an event has occurred.
+        action (str)                  - Which event: add or remove
+
+    Returns:
+        Nothing.
     """
     if action == "add":
         busnum = get_device_info(device, "busnum")
@@ -103,7 +117,7 @@ def getsome(device, action):
                      (socket.gethostname(), busnum, devnum, id_vendor,
                       id_product, manufacturer, product))
 
-    if action == "remove":
+    elif action == "remove":
         result = next((i for i, v in enumerate(USB_DEVICES) \
                        if v[0] == device.device_path), None)
         if result:
@@ -114,7 +128,7 @@ def getsome(device, action):
             manufacturer = USB_DEVICES[result][5]
             product = USB_DEVICES[result][6]
 
-            print "Remove -- %s Bus: %s Device: %s %s:%s %s %s" % \
+            print "[+] Remove -- %s Bus: %s Device: %s %s:%s %s %s" % \
                 (device.device_path, busnum, devnum, id_vendor, id_product,
                  manufacturer, product)
             send_sms("%s USB remove: %s:%s, %s:%s %s %s" % \
@@ -123,10 +137,12 @@ def getsome(device, action):
 
             USB_DEVICES.pop(result)
 
+        else:
+            print "[-] Unknown event: %s" % action
+
 
 def main():
-    """
-    docstring
+    """ main() -- entry point for this program
     """
     context = Context()
 
