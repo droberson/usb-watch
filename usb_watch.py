@@ -73,14 +73,16 @@ def send_sms(message):
     TODO: add error checking, perhaps move client to global so it doesn't
           have to be created every time (or destroy it). RTFM.
     """
-    if SEND_SMS == False:
+    if not SEND_SMS:
         return False
 
     client = Client(twilio_settings.account_sid, twilio_settings.auth_token)
 
-    message = client.api.account.messages.create(to=twilio_settings.phone_to,
-                                                 from_=twilio_settings.phone_from,
-                                                 body=message)
+    message = client.api.account.messages.create(
+        to=twilio_settings.phone_to,
+        from_=twilio_settings.phone_from,
+        body=message)
+
     return True
 
 
@@ -172,8 +174,8 @@ def write_pid_file(pid_file, pid):
         Nothing. Exits on failure.
     """
     try:
-        with open(pid_file, "w") as f:
-            f.write(str(pid))
+        with open(pid_file, "w") as outfile:
+            outfile.write(str(pid))
 
     except IOError as err:
         xprint("[-] Unable to open PID file %s for writing: %s" % \
@@ -215,7 +217,6 @@ def parse_cli():
 def main():
     """ main() -- entry point for this program
     """
-    global USB_DEVICES
     global SEND_SMS
     global DAEMONIZE
     global PID_FILE
