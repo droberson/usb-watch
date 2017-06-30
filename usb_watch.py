@@ -3,16 +3,10 @@
 """
 usb_watch.py -- Watch for USB events on a Linux machine.
 
-STILL REALLY ROUGH. 6/26/2017 Daniel Roberson @dmfroberson
+Not as rough, but still not 100% 6/30/2017 Daniel Roberson @dmfroberson
 
 Requires:
   - pyudev
-
-
-TODO:
- - Vendor and product lookups
- - argparse: toggle SMS
- - syslog?
 """
 
 import argparse
@@ -231,7 +225,7 @@ def main():
 
     DAEMONIZE = args.daemonize
     PID_FILE = args.pid_file
-    SEND_MS = args.sms
+    SEND_SMS = args.sms
 
     context = Context()
 
