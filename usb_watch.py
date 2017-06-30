@@ -18,14 +18,11 @@ TODO:
 """
 
 import os
-import glib
 import socket
+import glib
+from twilio.rest import Client
 import settings as twilio_settings
 from pyudev import Context, Monitor
-from twilio.rest import Client
-
-
-USB_DEVICES = []
 
 
 try:
@@ -37,7 +34,7 @@ try:
         """
         getsome(device, device.action)
 
-except:
+except ImportError:
     from pyudev.glib import GUDevMonitorObserver as MonitorObserver
 
     def device_event(observer, action, device):
@@ -45,6 +42,10 @@ except:
         docstring
         """
         getsome(device, action)
+
+
+# Globals
+USB_DEVICES = []
 
 
 def send_sms(message):
@@ -68,8 +69,8 @@ def get_device_info(device, item):
     device_info = device.sys_path + "/" + item
 
     if os.path.isfile(device_info) is True:
-        with open(device_info) as f:
-            for line in f:
+        with open(device_info) as usb_device:
+            for line in usb_device:
                 return line.rstrip(os.linesep)
 
     return None
