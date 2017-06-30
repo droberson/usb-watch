@@ -267,7 +267,11 @@ def main():
     xprint("[+] usb-watch by Daniel Roberson @dmfroberson Started. PID %s" % \
         os.getpid())
 
-    glib.MainLoop().run()
+    try:
+        glib.MainLoop().run()
+    except KeyboardInterrupt:
+        print "[-] Caught Control-C. Andross has ordered us to take you down."
+        print "[-] Exiting."
 
     return os.EX_OK
 
