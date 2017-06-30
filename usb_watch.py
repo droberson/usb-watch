@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-usb_watch.py -- watch for USB events and make notify of them
+usb_watch.py -- Watch for USB events on a Linux machine.
 
 STILL REALLY ROUGH. 6/26/2017 Daniel Roberson @dmfroberson
 
@@ -110,7 +110,7 @@ def event_handler(device, action):
                                 id_product,
                                 manufacturer,
                                 product))
-            print "Add -- %s Bus: %s Device: %s %s:%s %s %s" % \
+            print "[+] Add -- %s Bus: %s Device: %s %s:%s %s %s" % \
                 (device.device_path, busnum, devnum, id_vendor, id_product,
                  manufacturer, product)
             send_sms("%s USB add: %s:%s, %s:%s %s %s" % \
